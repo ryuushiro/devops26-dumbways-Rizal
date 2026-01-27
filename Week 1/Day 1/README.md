@@ -116,6 +116,29 @@ Setelah mengatur, saya lanjut ke tahap berikutnya.
 <img width="1298" height="812" alt="image" src="https://github.com/user-attachments/assets/028b56c8-09ff-41a0-811c-37b0bf2d25d7" />
 
 
+**18.** Setelah menunggu cukup lama, akhirnya instalasi selesai. Pilih _Reboot Now_ untuk menyelesaikan instalasi.
+<img width="1299" height="811" alt="image" src="https://github.com/user-attachments/assets/cf5477a8-023d-4116-ae95-9d0527ef4f42" />
+
+
+**19.** Proses _Reboot_ dimulai.
+
+<img width="710" height="343" alt="image" src="https://github.com/user-attachments/assets/b9c975e9-0fc9-4dac-a78a-87ce7b919238" />
+
+**20.** Setelah proses _Reboot_ selesai. Ubuntu Server siap digunakan. Namun sebelumnya saya harus _login_ terlebih dahulu dengan data yang sebelumnya saya masukkan.
+<img width="1326" height="500" alt="image" src="https://github.com/user-attachments/assets/0f65a406-3141-4d05-82e8-ee28ae5454f2" />
+
+**21.** Selesai. Sekarang saya bisa menulis _command_ di OS ini. Untuk tes pertama, saya mencoba apakah VM terkoneksi ke internet atau tidak dengan melakukan _PING_ ke DNS [https://google.com/](https://google.com/)
+<img width="658" height="671" alt="image" src="https://github.com/user-attachments/assets/28bb530d-8e27-4002-a4c1-800d0af71869" />
+
+
+Seperti yang bisa dilihat, Ubuntu Servernya sudah terkoneksi ke internet. Dengan ini, selesai sudah tugas pertama untuk minggu pertama.
+<img width="724" height="457" alt="image" src="https://github.com/user-attachments/assets/1142867d-5a0a-4188-8147-b6f1964a3edd" />
+
+
+
+
+
+
 
 
 
