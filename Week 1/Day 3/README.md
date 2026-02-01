@@ -70,6 +70,125 @@ Port yang sudah dibuka/diizinkan bisa dicek dengan command "sudo ufw status verb
 <img width="588" height="386" alt="image" src="https://github.com/user-attachments/assets/3289d0fa-674f-4a3d-9749-f2e1426e85d2" /><br><br>
 Jika sebelumnya kita membuka akses port, selanjutnya kita bisa juga menolak akses port menggunakan "sudo ufw deny angkaport". Contohnya, saya ingin menolak akses port 6767. Terlihat pada gambar di bawah kalau aksesnya menjadi "DENY IN".<br>
 <img width="581" height="486" alt="image" src="https://github.com/user-attachments/assets/78a8fd17-b9e4-4b99-8676-f4bbef55bf37" /><br><br>
+# CHALLENGE!
+## Text Manipulation: membuat bash script yang bertujuan untuk menambah/menghapus/mengubah isi dari file yang sudah ada.
+Sebelum membuat BASH Script, saya membuat file yang akan diedit terlebih dahulu yaitu "belanja.txt".<br>
+<img width="547" height="140" alt="image" src="https://github.com/user-attachments/assets/c203c7d4-f707-491f-bd70-5fa481610931" /><br><br>
+Setelah membuat file yang akan diedit, sekarang kita buat BASH Script-nya. Saya buat file baru dengan nano menggunakan command "nano atur_belanja.sh". Lalu, saya isikan dengan script di bawah ini.<br>
+```bash
+#!/bin/bash
+
+FILE="belanja.txt"
+
+if [ ! -f "$FILE" ]; then
+    touch "$FILE"
+fi
+
+while true; do
+    clear
+    
+    echo "=========================================="
+    echo "        APLIKASI CATATAN BELANJA          "
+    echo "=========================================="
+    
+    echo "Isi File Saat Ini:"
+    if [ -s "$FILE" ]; then
+        cat -n "$FILE"
+    else
+        echo "(Daftar masih kosong)"
+    fi
+    echo "=========================================="
+    
+    echo "Mau ngapain nih?"
+    echo "[1] Tambah Barang"
+    echo "[2] Ubah Barang"
+    echo "[3] Hapus Barang"
+    echo "[4] Keluar Aplikasi"
+    echo "------------------------------------------"
+    
+    read -p "Masukkan pilihanmu (1-4): " pilihan
+
+    case "$pilihan" in
+        1)
+            echo "--- TAMBAH BARANG ---"
+            read -p "Mau nambah apa? : " barang_baru
+            
+            echo "$barang_baru" >> "$FILE"
+            echo ">> Baik, '$barang_baru' sudah dicatat."
+            ;;
+            
+        2)
+            echo "--- UBAH BARANG ---"
+            read -p "Nama barang lama : " lama
+            read -p "Nama barang baru : " baru
+            
+            if grep -q "$lama" "$FILE"; then
+                sed -i "s/$lama/$baru/g" "$FILE"
+                echo ">> Baik, '$lama' sudah diganti menjadi '$baru'."
+            else
+                echo ">> Barang '$lama' tidak ditemukan."
+            fi
+            ;;
+            
+        3)
+            echo "--- HAPUS BARANG ---"
+            read -p "Apa yang mau dihapus? : " hapus
+            
+            if grep -q "$hapus" "$FILE"; then
+                sed -i "/$hapus/d" "$FILE"
+                echo ">> Baik,'$hapus' sudah dibuang dari daftar."
+            else
+                echo ">> Barang '$hapus' tidak ditemukan."
+            fi
+            ;;
+            
+        4)
+            echo "Sampai jumpa lagi..."
+            break  
+            ;;
+            
+        *)
+            echo "Pilihan salah. Pilih 1 sampai 4."
+            ;;
+    esac
+
+    echo ""
+    read -p "Tekan Enter untuk kembali ke menu..." dummy
+done
+
+```
+
+### PENJELASAN
+>Pada BASH Script di atas, saya menggunakan berbagai command dan code baru.<br>
+Di awal, saya menggunakan **"if"** untuk mengecek kondisi. Contoh "if [ -s "$FILE" ]" mengecek apakah $file ada isinya atau tidak.<br><br>
+Untuk pilihan pengguna (user), saya pertama menggunakan **"read"** untuk membaca masukan, dan menggunakan **"case"** untuk memilah masukan dari pengguna. Contohnya, pada code "read -p "Masukkan pilihanmu (1-4): " pilihan", pengguna akan memasukkan angka 1 sampai 4. Setelah pengguna memasukkan angkanya, fungsi "case" (case "$pilihan" in) akan terpanggil sesuai dengan angka yang dimasukkan.<br><br>
+Lalu saya juga menggunakan **"While Loop"** di aplikasi ini karena saya ingin aplikasi ini tetap berjalan sampai pengguna memilih untuk menutup aplikasinya (jika pengguna memilih 4, maka **"break"** akan berjalan dan menghentikan aplikasi).<br><br>
+Di awal saya menggunakan **"clear"** agar tampilan tidak menumpuk.<br><br>
+Di akhir code setelah "case", saya menggunakan variabel **"dummy"**. Masukan yang diberikan pengguna ke variabel ini tidak terpakai. Saya gunakan code ini agar pengguna bisa membaca "echo" sukses atau tidak sukses dalam mengedit teks sebelum command "clear" berjalan. Jadi, "clear" baru berjalan setelah pengguna memencet tombol enter. <br>
+
+Setelah membuat file "atur_belanja.sh", kita berikan izin eksekusi agar script bisa dijalankan dengan command "chmod +x atur_belanja.sh"<br>
+Untuk memulai scriptnya, kita bisa memanggil nama scriptnya dengan "./atur_belanja.sh". Setelah pengguna memencet tombol enter, script akan langsung berjalan.<br><br>
+<img width="408" height="304" alt="image" src="https://github.com/user-attachments/assets/ea60204d-0f63-428a-99f3-198357771c42" /><br>Tampilan utama BASH Script autr_belanja.sh.<br><br>
+<img width="396" height="413" alt="image" src="https://github.com/user-attachments/assets/8eaa3a66-ea8c-40cb-ab90-4563ced733c7" /><br><img width="248" height="105" alt="image" src="https://github.com/user-attachments/assets/a31e7119-ad86-489a-b11a-9677193880af" /><br>Tampilan setelah pengguna menambahkan barang.<br><br>
+<img width="463" height="427" alt="image" src="https://github.com/user-attachments/assets/39ca0873-3483-4f6f-960c-2bae31160474" /><br><img width="183" height="101" alt="image" src="https://github.com/user-attachments/assets/160bc8b6-cf88-4b20-bbad-eaa2a7115242" /><br>Tampilan setelah pengguna mengganti"Pisang" ke "Mangga".<br><br>
+<img width="403" height="417" alt="image" src="https://github.com/user-attachments/assets/cdd06fff-ac76-4170-a5e1-b9fa04c673af" /><br><img width="231" height="83" alt="image" src="https://github.com/user-attachments/assets/a2d2f0f7-6c96-4311-b5b7-926a0c3def63" /><br>Tampilan setelah pengguna menghapus "Susu".<br><br>
+<img width="406" height="334" alt="image" src="https://github.com/user-attachments/assets/b4c2a145-f38b-40bb-b944-3a00c2c1329f" /><br>Tampilan setelah pengguna memilih untuk selesai.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
