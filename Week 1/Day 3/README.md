@@ -61,6 +61,19 @@ Jika saya ingin mencari kata "Aman" dan tidak peduli akan huruf kapital atau tid
 <img width="456" height="80" alt="image" src="https://github.com/user-attachments/assets/d7024617-f645-4a5f-8061-5a5ffbeffd3a" /><br><br>
 Jika saya ingin mencari kata selain "Aman", saya bisa menambahkan "-v" setelah command "grep".<br>
 <img width="454" height="81" alt="image" src="https://github.com/user-attachments/assets/f208f05b-0aa5-4002-961e-d1702a8edada" /><br><br>
+# 4. Nyalakan ufw dengan memberikan akses untuk port 22, 80, 443, 3000, 5000 dan 6969!
+Untuk menyalakan UFW, kita jalankan command "sudo ufw enable".<br>
+<img width="718" height="79" alt="image" src="https://github.com/user-attachments/assets/0294de5f-ba18-4964-a264-061acfd226fd" /><br><br>
+Setelah itu, kita bisa buka/izinkan akses port masing-masing menggunakan "sudo ufw allow angkaport".<br>
+<img width="328" height="370" alt="image" src="https://github.com/user-attachments/assets/56b78073-fef6-4da7-85e8-30daadb90b89" /><br><br>
+Port yang sudah dibuka/diizinkan bisa dicek dengan command "sudo ufw status verbose". Saya menggunakan "verbose" untuk melihat detail lebih.<br>
+<img width="588" height="386" alt="image" src="https://github.com/user-attachments/assets/3289d0fa-674f-4a3d-9749-f2e1426e85d2" /><br><br>
+Jika sebelumnya kita membuka akses port, selanjutnya kita bisa juga menolak akses port menggunakan "sudo ufw deny angkaport". Contohnya, saya ingin menolak akses port 6767. Terlihat pada gambar di bawah kalau aksesnya menjadi "DENY IN".<br>
+<img width="581" height="486" alt="image" src="https://github.com/user-attachments/assets/78a8fd17-b9e4-4b99-8676-f4bbef55bf37" /><br><br>
+
+
+
+
 
 
 
