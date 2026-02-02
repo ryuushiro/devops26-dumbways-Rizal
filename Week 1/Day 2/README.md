@@ -17,21 +17,13 @@ Sedangkan Bash merupakan salah satu upgrade/penyempurnaan dari Shell. Perbedaan 
 # 3. Linux Commands
 | Command | Kategori | Fungsi | Contoh Penggunaan |
 | :--- | :--- | :--- | :--- |
-| **`pwd`** | Dasar | *Print Working Directory*, menampilkan posisi folder saat ini. | `pwd` |
-| **`ls`** | Dasar | *List*, menampilkan daftar file dan folder. | `ls -la` (menampilkan detail & file tersembunyi) |
-| **`cd`** | Dasar | *Change Directory*, berpindah ke folder lain. | `cd /var/www` |
-| **`mkdir`** | File | *Make Directory*, membuat folder baru. | `mkdir tugasku` |
-| **`touch`** | File | Membuat file kosong baru. | `touch index.html` |
-| **`cp`** | File | *Copy*, menyalin file atau folder. | `cp foto.jpg /backup/foto.jpg` |
+| **`pwd`** | Dasar | *Print Working Directory*, menampilkan posisi directory saat ini. | `pwd` |
+| **`ls`** | Dasar | *List*, menampilkan daftar file dan directory. | `ls -la` (menampilkan detail & file tersembunyi) |
+| **`cd`** | Dasar | *Change Directory*, berpindah ke directory lain. | `cd .ssh` (pindah ke directory /.ssh/)  |
+| **`mkdir`** | File | *Make Directory*, membuat directory baru. | `mkdir directorybaru` |
+| **`touch`** | File | Membuat file kosong baru. | `touch filekosongbaru` |
+| **`cp`** | File | *Copy*, menyalin file atau directory. | `cp foto.jpg /backup/foto.jpg` |
 | **`mv`** | File | *Move*, memindahkan file atau mengganti nama (*rename*). | `mv file_lama.txt file_baru.txt` |
 | **`rm`** | File | *Remove*, menghapus file. | `rm data_sampah.txt` |
 | **`cat`** | Baca File | Menampilkan isi file teks langsung di terminal. | `cat catatan.txt` |
-| **`nano`** | Editor | Membuka text editor sederhana di terminal. | `nano config.conf` |
-| **`grep`** | **Lanjutan (+)** | Mencari kata kunci spesifik di dalam sebuah file teks. | `grep "error" syslog.log` |
-| **`chmod`** | **System (+)** | *Change Mode*, mengubah izin akses (*permission*) file. | `chmod 777 script.sh` |
-| **`chown`** | **System (+)** | *Change Owner*, mengubah pemilik file. | `chown user:group file.txt` |
-| **`ping`** | Network | Mengecek koneksi ke alamat IP/Website lain. | `ping 8.8.8.8` |
-| **`ip a`** | Network | Menampilkan informasi IP Address (pengganti `ifconfig`). | `ip a` |
-| **`htop`** | **Extra (++)** | Task manager interaktif untuk monitor CPU & RAM. | `htop` |
-| **`history`**| **Extra (++)** | Melihat riwayat perintah yang pernah diketik sebelumnya. | `history` |
-| **`man`** | Manual | Membuka buku panduan lengkap untuk suatu perintah. | `man ls` |
+| **`nano`** | Editor | Membuka text editor sederhana di terminal. | `nano /etc/netplan/50-cloud-init.yaml` |
