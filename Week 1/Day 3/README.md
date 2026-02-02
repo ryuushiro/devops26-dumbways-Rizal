@@ -174,8 +174,63 @@ Untuk memulai scriptnya, kita bisa memanggil nama scriptnya dengan "./atur_belan
 <img width="403" height="417" alt="image" src="https://github.com/user-attachments/assets/cdd06fff-ac76-4170-a5e1-b9fa04c673af" /><br><img width="231" height="83" alt="image" src="https://github.com/user-attachments/assets/a2d2f0f7-6c96-4311-b5b7-926a0c3def63" /><br>Tampilan setelah pengguna menghapus "Susu".<br><br>
 <img width="406" height="334" alt="image" src="https://github.com/user-attachments/assets/b4c2a145-f38b-40bb-b944-3a00c2c1329f" /><br>Tampilan setelah pengguna memilih untuk selesai.
 
+## UFW Manipulation with BASH Script
+Pertama, buat file BASH Scriptnya dengan "nano ufwscript.sh" dan isi dengan code di bawah: <br>
+```bash
+#!/bin/bash
 
+echo "SISTEM UFW CHALLENGE!"
+echo "Mau apa sekarang?"
+echo "Masukkan ON untuk menyalakan firewall."
+echo "Masukkan OFF untuk mematikan firewall."
+echo "Masukkan ALLOW untuk membuka akses port."
+echo "Masukkan DENY untuk menolak akses port."
+echo "Masukkan HAPUS untuk menghapus aturan yang sudah dibuat."
+read perintah
 
+perintah=${perintah,,}
+
+case "$perintah" in
+    "on")
+        echo "Menyalakan Firewall..."
+        sudo ufw enable
+        ;;
+        
+    "off")
+        echo "Mematikan Firewall..."
+        sudo ufw disable
+        ;;
+        
+    "allow")
+        echo "Mau kasih akses ke port berapa?"
+        read port
+        sudo ufw allow $port
+        echo "Akses ke port $port berhasil dibuka."
+        ;;
+        
+    "deny")
+        echo "Mau tolak akses ke port berapa?"
+        read port
+        sudo ufw deny $port
+        echo "Akses ke port $port berhasil ditolak."
+        ;;
+        
+    "hapus")
+        echo "Mau hapus aturan yang mana?"
+        echo "Format: [allow/deny] [port] (Contoh: allow 80)"
+        read rule
+        sudo ufw delete $rule
+        ;;
+        
+    *)
+        echo "Maaf, perintah '$perintah' tidak dikenali."
+        echo "Pilihannya cuma: on, off, allow, deny, atau hapus."
+        exit 1
+        ;;
+esac
+```
+### PENJELASAN
+>Pada BASH Script di atas, script akan menjalankan command sesuai dengan panggilan case-nya.<br>
 
 
 
