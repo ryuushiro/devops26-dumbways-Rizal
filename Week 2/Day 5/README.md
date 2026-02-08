@@ -8,15 +8,15 @@ Resource: https://github.com/dumbwaysdev/wayshub-frontend
 
 - Unduh NodeJS dengan mengunjungi laman web resminya. Pilih versi, OS, nvm, dan npm, lalu ikuti petunjuk yang ada.<br>
 <img width="527" height="352" alt="image" src="https://github.com/user-attachments/assets/38db1b21-a0ea-44b7-83c1-fc3f9e3ec409" /><br><br>
-- Setelah mengikuti petunjuk yang ada di web, seharusnya sudah terinstall NodeJS versi LTS terbaru. Namun, karena di tugas mengharuskan saya menggunakan versi 10 atau 12, maka saya install nvm versi 12 dengan menjalankan command "nvm install 12". Lalu, gunakan "nvm use 12" untuk menggunakannya.
+- Setelah mengikuti petunjuk yang ada di web, seharusnya sudah terinstall NodeJS versi LTS terbaru. Namun, karena di tugas mengharuskan saya menggunakan versi 10 atau 12, maka saya install nvm versi 12 dengan menjalankan command "nvm install 12". Lalu, gunakan "nvm use 12" untuk menggunakannya.<br>
 <img width="527" height="204" alt="image" src="https://github.com/user-attachments/assets/dae50b01-d101-44c3-84db-73e6189cfce3" /><br><br>
 - Setelah menginstall NodeJS, sekarang saya akan _clone_ repository resource "wayshub-frontend" ke git lokal dengan menjalankan command "git clone <https://github.com/dumbwaysdev/wayshub-frontend.git>". Setelah selesai, masuk ke directory yang sudah diunduh.<br>
 <img width="527" height="166" alt="image" src="https://github.com/user-attachments/assets/a2fcbe22-4b89-45a0-be7d-05a6f0b11aa8" /><br><br>
-- Jalankan "npm install" untuk menginstall paket-paket npm yang dibutuhkan untuk menjalankan proyeknya.
+- Jalankan "npm install" untuk menginstall paket-paket npm yang dibutuhkan untuk menjalankan proyeknya.<br>
 <img width="527" height="287" alt="image" src="https://github.com/user-attachments/assets/1daccea2-f48c-4f4c-aedc-8a9d0331a17c" /><br><br>
-- Kalau paket dependensinya sudah terinstall, kita bisa jalankan command "PORT=3000 npm start" untuk memulai proyek NodeJS tersebut. Mengapa menggunakan command tersebut? "PORT=3000" digunakan untuk membuat proyek tersebut berjalan di Port 3000 (sesuai tugas), dan "npm start" adalah command standar NodeJS untuk menjalankan script.
+- Kalau paket dependensinya sudah terinstall, kita bisa jalankan command "PORT=3000 npm start" untuk memulai proyek NodeJS tersebut. Mengapa menggunakan command tersebut? "PORT=3000" digunakan untuk membuat proyek tersebut berjalan di Port 3000 (sesuai tugas), dan "npm start" adalah command standar NodeJS untuk menjalankan script.<br>
 <img width="541" height="36" alt="image" src="https://github.com/user-attachments/assets/77cc7174-eb06-42d6-bb83-41e888c0fcf4" /><br><br>
-- Setelah command dijalankan, maka proyek web "wayshub-frontend" sudah bisa diakses lewat IP_Lokal:Port.
+- Setelah command dijalankan, maka proyek web "wayshub-frontend" sudah bisa diakses lewat IP_Lokal:Port.<br>
 <img width="527" height="284" alt="image" src="https://github.com/user-attachments/assets/8aa5d483-69e0-4d8e-b66f-ea4db0475739" /><br><br>
 
 # Tugas 2: Python
