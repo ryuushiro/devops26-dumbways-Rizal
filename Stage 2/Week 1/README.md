@@ -1,4 +1,4 @@
-<img width="975" height="585" alt="image" src="https://github.com/user-attachments/assets/ae8d5a32-225c-4779-bae8-f57800cd5e95" />## Week 1 - Linux & Server Management
+## Week 1 - Linux & Server Management
 
 ---
 
