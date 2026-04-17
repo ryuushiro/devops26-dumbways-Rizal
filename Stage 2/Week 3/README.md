@@ -1,5 +1,9 @@
+> Update 17/04/2026: Making progress on Ansible, but not 100% yet!
+
+------
+
 # Infrastructure as Code (IaC)
-## 1. IaC with Terraform in WSL to AWS
+## I. IaC with Terraform in WSL to AWS
 ### 1. Install WSL in your local windows
 ```powershell
 wsl --install
@@ -74,7 +78,7 @@ First, let us see what we'd create.
 - variables.tf
 - main.tf
 - outputs.tf
-------
+-----
 `providers.tf` is a file that gonna tell Terraform on what cloud computing that we'll use.
 ```terraform
 # ==========================================
@@ -112,7 +116,7 @@ provider "aws" {
   region = var.aws_region
 }
 ```
-------
+-----
 Next, is `variables.tf`. The file acts as a "centralized control panel" or a dictionary for your infrastructure. Instead of hardcoding values directly into your main code (main.tf or providers.tf), you store them here. This makes your code much cleaner, reusable, and easier to modify without accidentally breaking the main logic.
 ```terraform
 # ==========================================
@@ -154,7 +158,7 @@ variable "key_name" {
   default     = "my-aws-key"
 }
 ```
-------
+-----
 `main.tf` is the core of Terraform's set-up. Here, we wrote the setting that Terraform will follow for our plans.
 ```terraform
 # ==========================================
@@ -349,7 +353,7 @@ resource "aws_volume_attachment" "vol_att_2" {
   instance_id = aws_instance.ubuntu_server_2.id
 }
 ```
-------
+-----
 Lastly, `outputs.tf` acts like a "receipt" or a "summary dashboard" after your infrastructure is successfully built.
 
 When Terraform finishes creating everything, it generates a massive, complex file in the background (called the state file) that contains every single detail about your servers. Instead of forcing you to dig through that huge file or log into the AWS website just to find your new IP addresses, outputs.tf extracts exactly the information you need and prints it neatly right in your terminal.
@@ -425,6 +429,697 @@ terraform destroy
 <img width="848" height="274" alt="image" src="https://github.com/user-attachments/assets/4ac5343c-8a6f-45ae-b363-fc1f248725e8" /><br> *Terraforms review the command on how much will be destroyed.* <br><br>
 <img width="624" height="150" alt="image" src="https://github.com/user-attachments/assets/092acf43-5596-4b04-bf8e-16f96591dcd5" /><br> *Both servers successfuly destroyed!*
 
+------
+
+## II. Configures Servers with Ansible
+### 1. Install required apps (pipx and Ansible)
+First, we need to install pipx first. 
+```bash
+sudo apt update
+sudo apt install pipx
+pipx ensurepath
+```
+<img width="336" height="94" alt="image" src="https://github.com/user-attachments/assets/d747e1d9-1d10-44d4-ac0f-8283103076c1" /><br> *Checking pipx version.* <br><br>
+Then, we can install Ansible with pipx by following [this guide from Ansible's official website](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html)
+```bash
+pipx install --include-deps ansible 
+```
+<img width="1033" height="512" alt="image" src="https://github.com/user-attachments/assets/dcfe7a79-8fa1-4cb3-8af7-74ad3c2ef75a" />
+
+### 2. Preparing the Directories and Files
+Now, time to create the directories and files, structured like this:
+```plaintext
+Automation/
+└── Ansible/
+    ├── ansible.cfg	        # Config file — tells Ansible where your inventory is, which SSH key to use, which remote user, etc.
+    ├── site.yaml           # Master playbook — just imports/calls all other playbooks in order
+    ├── appserver.yaml      # Server 1: Docker, FE, BE
+    ├── gateway.yaml        # Server 2: Nginx, Database, etc.
+    ├── monitoring.yaml     # For monitoring configs
+    ├── group_vars/
+    │   └── all             # Global variables shared across all playbooks — DB passwords, image names, ports, etc
+    └── inventory           # List of your servers with their IPs, grouped by role        
+```
+<img width="772" height="56" alt="image" src="https://github.com/user-attachments/assets/c867d084-44c4-47d7-8aaa-19695ecbc117" /><br>
+
+-----
+`inventory` is basically a list of your servers that Ansible needs to know about. Before Ansible can do anything to your servers, it needs to know:
+- Where are the servers? (IP addresses)
+- How do I group them? (appserver, gateway)
+- How do I connect to them? (which user, which SSH key)
+
+```ini
+# [appserver] is a group name — servers listed under here are your S1 servers
+# You can have multiple IPs under one group if you have multiple app servers
+[appserver]
+108.136.90.214   # S1 IP address — Frontend + Backend server
+
+# [gateway] is another group — servers listed here are your S2 servers
+[gateway]
+16.78.119.244    # S2 IP address — Nginx + Database server
+
+# [all:vars] applies these variables to ALL servers in this inventory
+[all:vars]
+
+# The Linux user Ansible will use to SSH into your servers
+# Since we're using AWS Ubuntu, the default user is "ubuntu"
+ansible_user=ubuntu
+
+# Path to your AWS .pem key file — needed to authenticate SSH without a password
+ansible_ssh_private_key_file=~/Automation/Terraform/aws/my-aws-key.pem
+
+# Skips the "Are you sure you want to connect?" prompt when SSH-ing into a new server
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+```
+-----
+For `ansible.cfg`, think of it as Ansible's settings file. Without it, you'd have to pass all these options manually every time you run a command. With it, Ansible automatically knows:
+- Where your inventory is
+- Which SSH key to use
+- Which user to connect as
+```ini
+[defaults]
+# Path to your inventory file — tells Ansible where to find your servers
+inventory = ./Inventory
+
+# The default user Ansible uses to SSH into your servers
+remote_user = ubuntu
+
+# Path to your AWS .pem key file for SSH authentication
+private_key_file = ~/Automation/Terraform/aws/my-aws-key.pem
+
+# Speeds up Ansible by disabling host key checking
+host_key_checking = False
+
+# Makes Ansible output more readable by using YAML format
+stdout_callback = yaml
+
+# How many servers Ansible can configure simultaneously
+# Since we only have 2 servers, 10 is more than enough
+forks = 10
+```
+-----
+`group_vars/all` is a central config file for all your variables. Instead of hardcoding values like domain names or ports inside each playbook, you define them here once and reference them everywhere like {{ fe_domain }}.
+This way if something changes — like a domain name or port — you only need to update it in one place instead of hunting through every playbook.
+```ini
+# ============================================================
+# SSH & User Configuration
+# ============================================================
+
+# The new Linux user that will be created on both servers
+new_user: rizal
+
+# Password for the new user (will be hashed automatically by Ansible)
+user_password: "your_password_here"
+
+# ============================================================
+# Domain Configuration
+# ============================================================
+
+# Base domain from Cloudflare
+base_domain: studentdumbways.my.id
+
+# Frontend domain
+fe_domain: "wayshub.rizal.{{ base_domain }}"
+
+# Backend/API domain
+be_domain: "api.rizal.{{ base_domain }}"
+
+# Grafana domain
+grafana_domain: "grafana.rizal.{{ base_domain }}"
+
+# Prometheus domain
+prometheus_domain: "prometheus.rizal.{{ base_domain }}"
+
+# ============================================================
+# Application Configuration
+# ============================================================
+
+# Frontend Docker image name
+fe_image: wayshub-frontend
+
+# Backend Docker image name
+be_image: wayshub-backend
+
+# Frontend container port
+fe_port: 3000
+
+# Backend container port
+be_port: 5000
+
+# ============================================================
+# Monitoring Configuration
+# ============================================================
+
+# Prometheus port
+prometheus_port: 9090
+
+# Grafana port
+grafana_port: 3000
+
+# Node exporter port
+node_exporter_port: 9100
+```
+-----
+Now, we'll create playbooks that is `appserver.yaml`, `gateway.yaml`, and `monitoring.yaml`. A playbook is basically a to-do list for Ansible. It's a YAML file that tells Ansible: 
+- Which servers to connect to
+- What tasks to run on those servers
+- In what order to run them
+
+The key parts:
+
+| Part    | What it means? |
+| -------- | ------- |
+| `hosts`  | Which group from your Inventory to run on    |
+| `become` | Whether to use sudo (true = yes)     |
+| `task`    | The actual list of things to do    |
+| `name`   | Human readable description of each task |
+| `module` | The Ansible built-in tool that does the actual work |
+
+What are modules?
+Modules are Ansible's built-in tools. Instead of writing bash scripts, Ansible has ready-made modules for almost everything. So when you run ansible-playbook `appserver.yaml`, Ansible reads the file top to bottom and executes each task one by one on your server — without you having to SSH in manually.
+
+For, `appserver.yaml`, we'll use this script:
+```yaml
+# This playbook runs on S1 (appserver) only
+- name: Configure Appserver
+  hosts: appserver
+  become: true  # Run as sudo/root
+
+  tasks:
+    # ============================================================
+    # User Setup
+    # ============================================================
+
+    # Create new user "rizal" on the server
+    - name: Create new user
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        password: "{{ user_password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # Add the new user to the sudo group so they can run sudo commands
+    - name: Add user to sudo group
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        groups: sudo
+        append: true
+
+    # Copy your local SSH public key to the new user's authorized_keys
+    # This allows SSH login using your key instead of password
+    - name: Set up SSH key for new user
+      ansible.posix.authorized_key:
+        user: "{{ new_user }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    # Allow password authentication via SSH
+    - name: Enable password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication yes'
+        state: present
+
+    # Restart SSH service to apply changes
+    - name: Restart SSH service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    # ============================================================
+    # Docker Installation
+    # ============================================================
+
+    # Install required packages for Docker
+    - name: Install Docker dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: true
+
+    # Add Docker's official GPG key to verify downloads
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # Add Docker's official repository
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+        state: present
+
+    # Install Docker engine
+    - name: Install Docker
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: true
+
+    # Add the new user to docker group so they can run Docker without sudo
+    - name: Add user to docker group
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        groups: docker
+        append: true
+
+    # Make sure Docker service is running
+    - name: Start and enable Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    # ============================================================
+    # Deploy Frontend & Backend
+    # ============================================================
+
+    # Clone the frontend repo from GitHub
+    - name: Clone frontend repository
+      ansible.builtin.git:
+        repo: https://github.com/kelompok1-dumbways/wayshub-frontend.git
+        dest: /home/{{ new_user }}/wayshub-frontend
+        force: true
+
+    # Clone the backend repo from GitHub
+    - name: Clone backend repository
+      ansible.builtin.git:
+        repo: https://github.com/kelompok1-dumbways/wayshub-backend.git
+        dest: /home/{{ new_user }}/wayshub-backend
+        force: true
+
+    # Build and run frontend Docker container
+    - name: Run frontend container
+      community.docker.docker_container:
+        name: wayshub-frontend
+        build:
+          path: /home/{{ new_user }}/wayshub-frontend
+        image: "{{ fe_image }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ fe_port }}:3000"
+
+    # Build and run backend Docker container
+    - name: Run backend container
+      community.docker.docker_container:
+        name: wayshub-backend
+        build:
+          path: /home/{{ new_user }}/wayshub-backend
+        image: "{{ be_image }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ be_port }}:5000"
+
+    # ============================================================
+    # Node Exporter (Monitoring)
+    # ============================================================
+
+    # Run Node Exporter as a Docker container for monitoring
+    - name: Run Node Exporter container
+      community.docker.docker_container:
+        name: node-exporter
+        image: prom/node-exporter:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ node_exporter_port }}:9100"
+```
+
+What this playbook does in order:
+
+- Creates user rizal with password + SSH key
+- Installs Docker
+- Clones FE & BE repos from GitHub
+- Runs FE & BE as Docker containers
+- Runs Node Exporter for monitoring
+
+For, `gateway.yaml`, we'll use this script:
+```yaml
+---
+# This playbook runs on S2 (gateway) only
+- name: Configure Gateway
+  hosts: gateway
+  become: true  # Run as sudo/root
+
+  tasks:
+    # ============================================================
+    # User Setup
+    # ============================================================
+
+    # Create new user "rizal" on the server
+    - name: Create new user
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        password: "{{ user_password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # Add the new user to the sudo group
+    - name: Add user to sudo group
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        groups: sudo
+        append: true
+
+    # Copy your local SSH public key to the new user's authorized_keys
+    - name: Set up SSH key for new user
+      ansible.posix.authorized_key:
+        user: "{{ new_user }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    # Allow password authentication via SSH
+    - name: Enable password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication yes'
+        state: present
+
+    # Restart SSH service to apply changes
+    - name: Restart SSH service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    # ============================================================
+    # Docker Installation
+    # ============================================================
+
+    # Install required packages for Docker
+    - name: Install Docker dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: true
+
+    # Add Docker's official GPG key
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # Add Docker's official repository
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable"
+        state: present
+
+    # Install Docker engine
+    - name: Install Docker
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: true
+
+    # Add new user to docker group
+    - name: Add user to docker group
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        groups: docker
+        append: true
+
+    # Make sure Docker service is running
+    - name: Start and enable Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    # ============================================================
+    # Nginx Reverse Proxy
+    # ============================================================
+
+    # Install Nginx
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    # Make sure Nginx is running
+    - name: Start and enable Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    # Create Nginx config for frontend
+    - name: Configure Nginx for frontend
+      ansible.builtin.template:
+        src: templates/nginx_fe.conf.j2
+        dest: /etc/nginx/sites-available/wayshub-frontend
+        mode: '0644'
+
+    # Create Nginx config for backend
+    - name: Configure Nginx for backend
+      ansible.builtin.template:
+        src: templates/nginx_be.conf.j2
+        dest: /etc/nginx/sites-available/wayshub-backend
+        mode: '0644'
+
+    # Enable frontend site
+    - name: Enable frontend site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/wayshub-frontend
+        dest: /etc/nginx/sites-enabled/wayshub-frontend
+        state: link
+
+    # Enable backend site
+    - name: Enable backend site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/wayshub-backend
+        dest: /etc/nginx/sites-enabled/wayshub-backend
+        state: link
+
+    # Reload Nginx to apply new configs
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    # ============================================================
+    # SSL Certificate (Let's Encrypt)
+    # ============================================================
+
+    # Install Certbot for SSL certificate generation
+    - name: Install Certbot
+      ansible.builtin.apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+        update_cache: true
+
+    # Generate SSL certificate for frontend domain
+    - name: Generate SSL for frontend
+      ansible.builtin.command:
+        cmd: >
+          certbot --nginx -d {{ fe_domain }}
+          --non-interactive --agree-tos
+          --email admin@{{ base_domain }}
+      args:
+        creates: /etc/letsencrypt/live/{{ fe_domain }}
+
+    # Generate SSL certificate for backend domain
+    - name: Generate SSL for backend
+      ansible.builtin.command:
+        cmd: >
+          certbot --nginx -d {{ be_domain }}
+          --non-interactive --agree-tos
+          --email admin@{{ base_domain }}
+      args:
+        creates: /etc/letsencrypt/live/{{ be_domain }}
+
+    # ============================================================
+    # Node Exporter (Monitoring)
+    # ============================================================
+
+    # Run Node Exporter as Docker container
+    - name: Run Node Exporter container
+      community.docker.docker_container:
+        name: node-exporter
+        image: prom/node-exporter:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ node_exporter_port }}:9100"
+```
+
+What this playbook does in order:
+
+- Creates user rizal with password + SSH key
+- Installs Docker
+- Installs Nginx
+- Configures Nginx reverse proxy for FE & BE
+- Generates SSL certificates via Let's Encrypt
+- Runs Node Exporter for monitoring
+
+For, `monitoring.yaml`, we'll use this script:
+```yaml
+---
+# This playbook runs on S2 (gateway) only
+# Prometheus and Grafana only need to be on one server
+- name: Configure Monitoring
+  hosts: gateway
+  become: true  # Run as sudo/root
+
+  tasks:
+    # ============================================================
+    # Prometheus
+    # ============================================================
+
+    # Create a directory to store Prometheus config
+    - name: Create Prometheus config directory
+      ansible.builtin.file:
+        path: /home/{{ new_user }}/prometheus
+        state: directory
+        mode: '0755'
+
+    # Copy Prometheus config file to the server
+    # This tells Prometheus which servers to scrape metrics from
+    - name: Copy Prometheus config
+      ansible.builtin.template:
+        src: templates/prometheus.yml.j2
+        dest: /home/{{ new_user }}/prometheus/prometheus.yml
+        mode: '0644'
+
+    # Run Prometheus as a Docker container
+    - name: Run Prometheus container
+      community.docker.docker_container:
+        name: prometheus
+        image: prom/prometheus:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ prometheus_port }}:9090"
+        # Mount the config file into the container
+        volumes:
+          - /home/{{ new_user }}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+    # ============================================================
+    # Grafana
+    # ============================================================
+
+    # Create a directory to store Grafana data
+    - name: Create Grafana data directory
+      ansible.builtin.file:
+        path: /home/{{ new_user }}/grafana
+        state: directory
+        mode: '0755'
+
+    # Run Grafana as a Docker container
+    - name: Run Grafana container
+      community.docker.docker_container:
+        name: grafana
+        image: grafana/grafana:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ grafana_port }}:3000"
+        # Mount the data directory so Grafana data persists
+        volumes:
+          - /home/{{ new_user }}/grafana:/var/lib/grafana
+        # Set default admin credentials
+        env:
+          GF_SECURITY_ADMIN_USER: "admin"
+          GF_SECURITY_ADMIN_PASSWORD: "admin123"
+
+    # ============================================================
+    # Nginx config for Prometheus and Grafana
+    # ============================================================
+
+    # Create Nginx config for Prometheus
+    - name: Configure Nginx for Prometheus
+      ansible.builtin.template:
+        src: templates/nginx_prometheus.conf.j2
+        dest: /etc/nginx/sites-available/prometheus
+        mode: '0644'
+
+    # Create Nginx config for Grafana
+    - name: Configure Nginx for Grafana
+      ansible.builtin.template:
+        src: templates/nginx_grafana.conf.j2
+        dest: /etc/nginx/sites-available/grafana
+        mode: '0644'
+
+    # Enable Prometheus site
+    - name: Enable Prometheus site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/prometheus
+        dest: /etc/nginx/sites-enabled/prometheus
+        state: link
+
+    # Enable Grafana site
+    - name: Enable Grafana site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/grafana
+        dest: /etc/nginx/sites-enabled/grafana
+        state: link
+
+    # Reload Nginx to apply new configs
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    # ============================================================
+    # SSL for Monitoring domains
+    # ============================================================
+
+    # Generate SSL certificate for Prometheus
+    - name: Generate SSL for Prometheus
+      ansible.builtin.command:
+        cmd: >
+          certbot --nginx -d {{ prometheus_domain }}
+          --non-interactive --agree-tos
+          --email admin@{{ base_domain }}
+      args:
+        creates: /etc/letsencrypt/live/{{ prometheus_domain }}
+
+    # Generate SSL certificate for Grafana
+    - name: Generate SSL for Grafana
+      ansible.builtin.command:
+        cmd: >
+          certbot --nginx -d {{ grafana_domain }}
+          --non-interactive --agree-tos
+          --email admin@{{ base_domain }}
+      args:
+        creates: /etc/letsencrypt/live/{{ grafana_domain }}
+```
+
+What this playbook does in order:
+
+- Creates directories for Prometheus & Grafana data
+- Copies Prometheus config (tells it where to scrape metrics from)
+- Runs Prometheus as Docker container
+- Runs Grafana as Docker container
+- Configures Nginx reverse proxy for both
+- Generates SSL certificates for both domains
+
+-----
+(to be continue)
 
 
 
