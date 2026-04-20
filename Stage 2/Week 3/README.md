@@ -432,7 +432,7 @@ terraform destroy
 ------
 
 ## II. Configures Servers with Ansible
-### 1. Install required apps (pipx and Ansible)
+### 1. Install required apps
 First, we need to install pipx first. 
 ```bash
 sudo apt update
@@ -444,21 +444,34 @@ Then, we can install Ansible with pipx by following [this guide from Ansible's o
 ```bash
 pipx install --include-deps ansible 
 ```
-<img width="1033" height="512" alt="image" src="https://github.com/user-attachments/assets/dcfe7a79-8fa1-4cb3-8af7-74ad3c2ef75a" />
+<img width="1033" height="512" alt="image" src="https://github.com/user-attachments/assets/dcfe7a79-8fa1-4cb3-8af7-74ad3c2ef75a" /><br>
+We also going to install these so Ansible can run smoothly.
+
+| Tool             | How                                                | Purpose                                       |
+|------------------|----------------------------------------------------|-----------------------------------------------|
+| passlib          | `pipx inject ansible passlib`                        | Password hashing for Ansible user creation    |
+| community.docker | `ansible-galaxy collection install community.docker` | Ansible module for managing Docker containers |
+| ansible.posix    | `ansible-galaxy collection install ansible.posix`    | Ansible module for ssh key management         |
 
 ### 2. Preparing the Directories and Files
 Now, time to create the directories and files, structured like this:
 ```plaintext
 Automation/
 └── Ansible/
-    ├── ansible.cfg	        # Config file — tells Ansible where your inventory is, which SSH key to use, which remote user, etc.
-    ├── site.yaml           # Master playbook — just imports/calls all other playbooks in order
-    ├── appserver.yaml      # Server 1: Docker, FE, BE
-    ├── gateway.yaml        # Server 2: Nginx, Database, etc.
-    ├── monitoring.yaml     # For monitoring configs
+    ├── ansible.cfg	                  # Config file — tells Ansible where your inventory is, which SSH key to use, which remote user, etc.
+    ├── site.yaml                     # Master playbook — just imports/calls all other playbooks in order
+    ├── appserver.yaml                # Server 1: Docker, FE, BE
+    ├── gateway.yaml                  # Server 2: Nginx, Database, etc.
+    ├── monitoring.yaml               # For monitoring configs
     ├── group_vars/
-    │   └── all             # Global variables shared across all playbooks — DB passwords, image names, ports, etc
-    └── inventory           # List of your servers with their IPs, grouped by role        
+    │   └── all                       # Global variables shared across all playbooks — DB passwords, image names, ports, etc
+    ├── templates
+    │   └── nginx_fe.conf.j2          # Tells Nginx to forward traffic from your FE domain to S1 port 3000
+    │   └── nginx_be.conf.j2          # Tells Nginx to forward traffic from your BE domain to S1 port 5000
+    │   └── nginx_prometheus.conf.j2  # Tells Nginx to forward traffic from your Prometheus domain to port 9090
+    │   └── nginx_grafana.conf.j2     # Tells Nginx to forward traffic from your Grafana domain to port 3000
+    │   └── prometheus.yml.j2         # Tells Prometheus which servers to scrape metrics from
+    └── inventory                     # List of your servers with their IPs, grouped by role        
 ```
 <img width="772" height="56" alt="image" src="https://github.com/user-attachments/assets/c867d084-44c4-47d7-8aaa-19695ecbc117" /><br>
 
@@ -1118,8 +1131,6 @@ What this playbook does in order:
 - Configures Nginx reverse proxy for both
 - Generates SSL certificates for both domains
 
------
-
 Lastly, `site.yaml` is the master playbook, the one that gonna runs all playbooks in order.
 
 ```yaml
@@ -1136,6 +1147,171 @@ Lastly, `site.yaml` is the master playbook, the one that gonna runs all playbook
 # Configures Nginx for monitoring domains
 - import_playbook: monitoring.yaml
 ```
+
+-----
+
+Next, we're going to create some configuration files for Nginx and Prometheus inside `/templates/` directory. They use the .j2 extension which stands for Jinja2, a Python templating engine that Ansible uses.<br>
+Why are we doing it this way? Without templates, if your IP changes you'd have to manually edit every config file. With templates, you just update `group_vars/all` and rerun Ansible — all configs update automatically.
+
+**nginx_be.conf.j2**
+```python
+# Nginx reverse proxy config for Backend API
+server {
+    # Listen on port 80 (HTTP)
+    listen 80;
+
+    # The domain name this config applies to
+    server_name {{ be_domain }};
+
+    location / {
+        # Forward all traffic to the backend container on S1
+        proxy_pass http://{{ hostvars[groups['appserver'][0]]['ansible_host'] | default(groups['appserver'][0]) }}:{{ be_port }};
+
+        # Pass the real IP of the visitor to the backend
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Pass the original host header
+        proxy_set_header Host $host;
+
+        # Pass the forwarded IP chain
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+**nginx_fe.conf.j2**
+```python
+# Nginx reverse proxy config for Frontend
+server {
+    # Listen on port 80 (HTTP)
+    listen 80;
+
+    # The domain name this config applies to
+    server_name {{ fe_domain }};
+
+    location / {
+        # Forward all traffic to the frontend container on S1
+        proxy_pass http://{{ hostvars[groups['appserver'][0]]['ansible_host'] | default(groups['appserver'][0]) }}:{{ fe_port }};
+
+        # Pass the real IP of the visitor to the backend
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Pass the original host header
+        proxy_set_header Host $host;
+
+        # Pass the forwarded IP chain
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+**nginx_grafana.conf.j2**
+```python
+# Nginx reverse proxy config for Grafana
+server {
+    # Listen on port 80 (HTTP)
+    listen 80;
+
+    # The domain name this config applies to
+    server_name {{ grafana_domain }};
+
+    location / {
+        # Forward all traffic to Grafana container
+        proxy_pass http://localhost:{{ grafana_port }};
+
+        # Pass the real IP of the visitor
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Pass the original host header
+        proxy_set_header Host $host;
+
+        # Pass the forwarded IP chain
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # Required for Grafana WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+**nginx_prometheus.conf.j2**
+```python
+# Nginx reverse proxy config for Prometheus
+server {
+    # Listen on port 80 (HTTP)
+    listen 80;
+
+    # The domain name this config applies to
+    server_name {{ prometheus_domain }};
+
+    location / {
+        # Forward all traffic to Prometheus container
+        proxy_pass http://localhost:{{ prometheus_port }};
+
+        # Pass the real IP of the visitor
+        proxy_set_header X-Real-IP $remote_addr;
+
+        # Pass the original host header
+        proxy_set_header Host $host;
+
+        # Pass the forwarded IP chain
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+**prometheus.yml.j2**
+```yaml
+# Prometheus configuration file
+global:
+  # How often Prometheus scrapes metrics from targets
+  scrape_interval: 15s
+
+  # How often Prometheus evaluates alerting rules
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Job for scraping Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Job for scraping Node Exporter on S1 (appserver)
+  - job_name: 'appserver'
+    static_configs:
+      - targets: ['{{ groups["appserver"][0] }}:{{ node_exporter_port }}']
+        labels:
+          instance: 'appserver' # Label to identify this server in Grafana
+
+  # Job for scraping Node Exporter on S2 (gateway)
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['localhost:{{ node_exporter_port }}']
+        labels:
+          instance: 'gateway' # Label to identify this server in Grafana
+```
+
+### 3. Running the Ansible
+Run `ansible-playbook site.yaml`
+<img width="976" height="202" alt="image" src="https://github.com/user-attachments/assets/1f018beb-4e16-40be-9cc5-91416654e01d" /><br> *The script running.* <br><br>
+After the script already done running, we can check the IP for frontend.<br>
+<img width="1148" height="852" alt="image" src="https://github.com/user-attachments/assets/037bffa6-18ab-4a9a-8383-b3191a63b81c" /><br> *Wayshub running.*<br><br>
+
+### 4. Setting Up Prometheus & Grafana
+First we need to connect Prometheus to Grafana. Open the Grafana UI `http://SERVER_2_IP:3000`. Then input your Admin ID and Password.
+Then go to `Connections → Data Sources → Add data source`. After that, choose Prometheus.
+Set URL to `http://SERVER_2_IP:9090`. Then, click `Save & Test`.
+<img width="1073" height="605" alt="image" src="https://github.com/user-attachments/assets/94fd4e5e-18e0-4808-bbbc-ef5cfeecc091" /><br><br>
+Second, we can costumize our panel.
+- Click + > Dashboard > Add Panel > Configure Visualization.
+- Select Prometheus as the source.
+- Set Query: Switch the toggle from "Builder" to Code, then paste the the query and click run query.
+
+
+
+
 (to be continue)
 
 
