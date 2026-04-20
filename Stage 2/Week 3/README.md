@@ -1119,6 +1119,23 @@ What this playbook does in order:
 - Generates SSL certificates for both domains
 
 -----
+
+Lastly, `site.yaml` is the master playbook, the one that gonna runs all playbooks in order.
+
+```yaml
+# Master playbook — runs all playbooks in order
+# Just run: ansible-playbook site.yaml
+# Step 1: Configure appserver (S1) first
+# Sets up user, Docker, deploys FE & BE, Node Exporter
+- import_playbook: appserver.yaml
+# Step 2: Configure gateway (S2)
+# Sets up user, Docker, Nginx, SSL, Node Exporter
+- import_playbook: gateway.yaml
+# Step 3: Set up monitoring
+# Deploys Prometheus, Grafana on S2
+# Configures Nginx for monitoring domains
+- import_playbook: monitoring.yaml
+```
 (to be continue)
 
 
