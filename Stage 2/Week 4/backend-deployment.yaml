@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: wayshub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ryuzu98/wayshub-backend:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: JWT_PRIVATE_KEY
+            - name: CLOUD_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: CLOUD_NAME
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: API_KEY
+            - name: API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: API_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: wayshub
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 5000
+      targetPort: 5000
